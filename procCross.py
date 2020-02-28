@@ -29,11 +29,13 @@ kextAtm35=interp(arange(176)*0.125,snd[:,1]/1000.,kextAtm)
 # absair,abswv = gasabsr98(f,tk,rhowv,pa,ireturn)
 
 wl=300/freq
-fh=Dataset('data/subset.006260.V06A.nc')
-#fh=Dataset('data/subset.000550.V06A.nc')
-zKu=fh['zKu'][:,:]
+fh=Dataset('data/subset3.006260.V06A.nc')
+fh=Dataset('data/subset3.000550.V06A.nc')
+zKu=fh['zKu'][:,1,:]
 zKum=ma.array(zKu,mask=zKu<10)
-zKa=fh['zKa'][:,:]
+zKa=fh['zKa'][:,1,:]
+pType=fh['pType'][:]
+pType=(pType/1e7).astype(int)
 zKam=ma.array(zKa,mask=zKa<10)
 plt.subplot(211)
 plt.pcolormesh(zKum.T,cmap='jet',vmax=50)
@@ -54,15 +56,14 @@ for i in range(50):
     ws,Zs,atts= nw_lambdsLiu(w,bscatInt_liu13,extInt_liu13,wlKu,dn)
     ws,Zs,atts= nw_lambd(w,bscatKu[-1,12,:],extKu[-1,12,:],DeqKu[12,:],wlKu,dn)
     wsj,Zsj,attsj,scattj,gj= jl.nw_lambd(w,bscatKu[-1,12,:],extKu[-1,12,:],DeqKu[12,:],scatKu[-1,12,:],\
-                               gKu[-1,12,:],wlKu,dn)
-    print(wsj,Zsj,gj)
+                              gKu[-1,12,:],wlKu,dn)
     zSL.append(Zs)
     attsL.append(4.343*atts)
     wsL.append(ws)
 
 
 
-#
+
 swc_coeffs=polyfit(0.1*array(zSL),log10(wsL),1)
 sAtt_coeffs=polyfit(0.1*array(zSL),log10(attsL),1)
 
@@ -90,12 +91,9 @@ def hb(zku,alpha,beta,a,b,n,node4,dr):
     a1d=interp(arange(n),node4,a)
     b1d=interp(arange(n),node4,b)
     q=0.2*log(10)
-    #print(alpha1d.shape)
-    #print(zku.shape)
     zeta=q*beta1d*alpha1d*10**(0.1*zku*beta1d)*dr
     piamax=55-zku[-1]
     zetamax=1.-10**(-piamax/10.*beta1d[-1])
-    #print(zeta.sum())
     if zeta.cumsum()[-1]>zetamax:
         eps=0.9999*zetamax/zeta.cumsum()[-1]
         zeta=eps*zeta
@@ -151,17 +149,18 @@ for iprof in range(zKu.shape[0]):
     if len(a1[0])>3:
         b1=nonzero(zKaMS[n4[2]-k:n4[-1]-k][a1]>0)
         a1=a1[0][b1]
-        if len(a1)>1:
+        if len(a1)>3:
             gradZ=(zKaMS1[n4[2]-k:n4[-1]-k][a1]-zKaMS[n4[2]-k:n4[-1]-k][a1])/0.693
             dZ=zKa[iprof,n4[2]:n4[-1]][a1]-zKaMS[n4[2]-k:n4[-1]-k][a1]
-            s=1.
-            ddn=dot(gradZ,dZ)/s/(dot(gradZ,gradZ)/s+1)
+            s=0.5
+            ddn=dot(gradZ,dZ)*s/(dot(gradZ,gradZ)*s+1)
             if(ddn>4):
                 ddn=4
             if ddn<-4:
                 ddn=-4
             dn*=exp(ddn)
-            zKaSfcL_1.append([zKaMS[n4[2]-k:n4[-1]-k][a1][-1],zKa[iprof,n4[2]:n4[-1]][a1][-1]])
+            if pType[iprof]!=2:
+                zKaSfcL_1.append([zKaMS[n4[2]-k:n4[-1]-k][a1][-3],zKa[iprof,n4[2]:n4[-1]][a1][-3]])
             zKaMS,zKaL_jl,zKuL_jl,\
                 piaKa,piaKu,pwc= fmodels(sAtt_coeffs,rAtt_coeffs,swc_coeffs,rwc_coeffs,zKu,iprof,n4,dn,\
                                          wlKu,wlKa,bscatKu,extKu,scatKu,DeqKu,gKu,\
@@ -169,10 +168,12 @@ for iprof in range(zKu.shape[0]):
                                          bscatKa,extKa,scatKa,DeqKa,gKa,\
                                          bscatKa_r,extKa_r,scatKa_r,DeqKa_r,gKa_r,\
                                          jl,hb,pyHB2,k,pwc2d,zc2d,kextAtm35,theta,noNorm,dr,alt,freq,noMS)
-            zKaSfcL_2.append([zKaMS[n4[2]-k:n4[-1]-k][a1][-1],zKa[iprof,n4[2]:n4[-1]][a1][-1]])
-            #print(dn)
-            dnL.append(dn)
-        #exit()
+            if pType[iprof]!=2:
+                zKaSfcL_2.append([zKaMS[n4[2]-k:n4[-1]-k][a1][-3],zKa[iprof,n4[2]:n4[-1]][a1][-3]])
+                
+            if pType[iprof]!=2:
+                dnL.append(dn)
+
                     
     if ( zKu[iprof,n4[-1]-1]>10):
         zsfcL.append([zKu[iprof,n4[-1]-1],zKuL_jl[-1]])
@@ -198,6 +199,13 @@ pwc2dm=ma.array(pwc2d,mask=pwc2d<0.01)
 import matplotlib
 plt.pcolormesh(pwc2dm.T,cmap='jet',vmax=10.,norm=matplotlib.colors.LogNorm())
 plt.ylim(175,50)
+
+print(corrcoef(array(zKaSfcL_1).T))
+print(corrcoef(array(zKaSfcL_2).T))
+zKaSfcL_1=array(zKaSfcL_1)
+zKaSfcL_2=array(zKaSfcL_2)
+print(zKaSfcL_1.mean(axis=0))
+print(zKaSfcL_2.mean(axis=0))
 
 
 #plt.figure()
