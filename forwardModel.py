@@ -146,8 +146,12 @@ wlKu=300/freqKu
 wlKa=300/freqKa
 
 def fmodels(sAtt_coeffs,rAtt_coeffs,swc_coeffs,rwc_coeffs,zKu,iprof,n4,dn,\
-            wlKu,wlKa,bscatKu,extKu,DeqKu,gKu_r,bscatKu_r,extKu_r,DeqKu_r,gKu_r,\
-            jl,pyHB2):
+            wlKu,wlKa,bscatKu,extKu,scatKu,DeqKu,gKu,\
+            bscatKu_r,extKu_r,scatKu_r,DeqKu_r,gKu_r,\
+            bscatKa,extKa,scatKa,DeqKa,gKa,\
+            bscatKa_r,extKa_r,scatKa_r,DeqKa_r,gKa_r,\
+            jl,hb,pyHB2,k,pwc2d,zc2d,kextAtm35,theta,noNorm,dr,alt,freq,noMS):
+    
     alpha=[10**sAtt_coeffs[1],10**sAtt_coeffs[1],\
            10**rAtt_coeffs[1]*dn**(1-rAtt_coeffs[0]),10**rAtt_coeffs[1]*dn**(1-rAtt_coeffs[0])]
     beta=[sAtt_coeffs[0],sAtt_coeffs[0],\
@@ -185,3 +189,4 @@ def fmodels(sAtt_coeffs,rAtt_coeffs,swc_coeffs,rwc_coeffs,zKu,iprof,n4,dn,\
                               theta,freq,noNorm)
 
     
+    return zms,zKaL_jl,zKuL_jl,piaKa,piaKu,pwc

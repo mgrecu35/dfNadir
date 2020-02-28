@@ -30,7 +30,7 @@ kextAtm35=interp(arange(176)*0.125,snd[:,1]/1000.,kextAtm)
 
 wl=300/freq
 fh=Dataset('data/subset.006260.V06A.nc')
-fh=Dataset('data/subset.000550.V06A.nc')
+#fh=Dataset('data/subset.000550.V06A.nc')
 zKu=fh['zKu'][:,:]
 zKum=ma.array(zKu,mask=zKu<10)
 zKa=fh['zKa'][:,:]
@@ -90,8 +90,8 @@ def hb(zku,alpha,beta,a,b,n,node4,dr):
     a1d=interp(arange(n),node4,a)
     b1d=interp(arange(n),node4,b)
     q=0.2*log(10)
-    print(alpha1d.shape)
-    print(zku.shape)
+    #print(alpha1d.shape)
+    #print(zku.shape)
     zeta=q*beta1d*alpha1d*10**(0.1*zku*beta1d)*dr
     piamax=55-zku[-1]
     zetamax=1.-10**(-piamax/10.*beta1d[-1])
@@ -121,17 +121,63 @@ alt=400.
 freq=35.
 zsfcL=[]
 piaL=[]
+zKaSfcL_1=[]
+zKaSfcL_2=[]
+dnL=[]
 for iprof in range(zKu.shape[0]):
     for k in range(0,bin0[iprof]-4):
         if zKu[iprof,k:k+3].min()>15:
             break
     n4=array([k,bin0[iprof]-2,bin0[iprof]+2,binC[iprof]])
-    dn=0.1
+    dn=0.5
+    zKaMS,zKaL_jl,zKuL_jl,\
+        piaKa,piaKu,pwc= fmodels(sAtt_coeffs,rAtt_coeffs,swc_coeffs,rwc_coeffs,zKu,iprof,n4,dn,\
+                             wlKu,wlKa,bscatKu,extKu,scatKu,DeqKu,gKu,\
+                             bscatKu_r,extKu_r,scatKu_r,DeqKu_r,gKu_r,\
+                             bscatKa,extKa,scatKa,DeqKa,gKa,\
+                             bscatKa_r,extKa_r,scatKa_r,DeqKa_r,gKa_r,\
+                             jl,hb,pyHB2,k,pwc2d,zc2d,kextAtm35,theta,noNorm,dr,alt,freq,noMS)
+    dn=0.5*2
+    zKaMS1,zKaL_jl_1,zKuL_jl_1,\
+        piaKa_1,piaKu_1,pwc1= fmodels(sAtt_coeffs,rAtt_coeffs,swc_coeffs,rwc_coeffs,zKu,iprof,n4,dn,\
+                             wlKu,wlKa,bscatKu,extKu,scatKu,DeqKu,gKu,\
+                             bscatKu_r,extKu_r,scatKu_r,DeqKu_r,gKu_r,\
+                             bscatKa,extKa,scatKa,DeqKa,gKa,\
+                             bscatKa_r,extKa_r,scatKa_r,DeqKa_r,gKa_r,\
+                             jl,hb,pyHB2,k,pwc2d,zc2d,kextAtm35,theta,noNorm,dr,alt,freq,noMS)
+
     
+    a1=nonzero(zKa[iprof,n4[2]:n4[-1]]>12)
+    if len(a1[0])>3:
+        b1=nonzero(zKaMS[n4[2]-k:n4[-1]-k][a1]>0)
+        a1=a1[0][b1]
+        if len(a1)>1:
+            gradZ=(zKaMS1[n4[2]-k:n4[-1]-k][a1]-zKaMS[n4[2]-k:n4[-1]-k][a1])/0.693
+            dZ=zKa[iprof,n4[2]:n4[-1]][a1]-zKaMS[n4[2]-k:n4[-1]-k][a1]
+            s=1.
+            ddn=dot(gradZ,dZ)/s/(dot(gradZ,gradZ)/s+1)
+            if(ddn>4):
+                ddn=4
+            if ddn<-4:
+                ddn=-4
+            dn*=exp(ddn)
+            zKaSfcL_1.append([zKaMS[n4[2]-k:n4[-1]-k][a1][-1],zKa[iprof,n4[2]:n4[-1]][a1][-1]])
+            zKaMS,zKaL_jl,zKuL_jl,\
+                piaKa,piaKu,pwc= fmodels(sAtt_coeffs,rAtt_coeffs,swc_coeffs,rwc_coeffs,zKu,iprof,n4,dn,\
+                                         wlKu,wlKa,bscatKu,extKu,scatKu,DeqKu,gKu,\
+                                         bscatKu_r,extKu_r,scatKu_r,DeqKu_r,gKu_r,\
+                                         bscatKa,extKa,scatKa,DeqKa,gKa,\
+                                         bscatKa_r,extKa_r,scatKa_r,DeqKa_r,gKa_r,\
+                                         jl,hb,pyHB2,k,pwc2d,zc2d,kextAtm35,theta,noNorm,dr,alt,freq,noMS)
+            zKaSfcL_2.append([zKaMS[n4[2]-k:n4[-1]-k][a1][-1],zKa[iprof,n4[2]:n4[-1]][a1][-1]])
+            #print(dn)
+            dnL.append(dn)
+        #exit()
+                    
     if ( zKu[iprof,n4[-1]-1]>10):
         zsfcL.append([zKu[iprof,n4[-1]-1],zKuL_jl[-1]])
         piaL.append([piaKu,piaKa])
-    zka2d[iprof,n4[0]:n4[-1]]=zKuL_jl#zKaL_jl
+    zka2d[iprof,n4[0]:n4[-1]]=zKaMS#zKaL_jl
     if iprof==-120:
         for k in range(n4[-1]-n4[0]):
             print(zKaL_jl[k],kext_jl[k],scat_jl[k],g_jl[k])
@@ -144,7 +190,7 @@ plt.subplot(211)
 plt.pcolormesh(zc2dm.T,cmap='jet',vmax=50)
 plt.ylim(175,50)
 plt.subplot(212)
-plt.pcolormesh(zka2dm.T,cmap='jet',vmax=50)
+plt.pcolormesh(zka2dm.T,cmap='jet',vmax=40)
 plt.ylim(175,50)
 
 plt.figure()
@@ -154,14 +200,11 @@ plt.pcolormesh(pwc2dm.T,cmap='jet',vmax=10.,norm=matplotlib.colors.LogNorm())
 plt.ylim(175,50)
 
 
-plt.figure()
-plt.plot(zKam[90,::-1],arange(176)*0.125)
-plt.plot(zka2dm[90,::-1],arange(176)*0.125)
-plt.ylim(0,12)
-plt.figure()
-plt.plot(zKam[95,::-1],arange(176)*0.125)
-plt.plot(zka2dm[95,::-1],arange(176)*0.125)
-plt.ylim(0,12)
-for i in range(100):
-    print(zKu[120,i+60],175*0.125+0.125/2-(i+60)*0.125)
-   
+#plt.figure()
+#plt.plot(zKam[90,::-1],arange(176)*0.125)
+#plt.plot(zka2dm[90,::-1],arange(176)*0.125)
+#plt.ylim(0,12)
+#plt.figure()
+#plt.plot(zKam[95,::-1],arange(176)*0.125)
+#plt.plot(zka2dm[95,::-1],arange(176)*0.125)
+#plt.ylim(0,12)
